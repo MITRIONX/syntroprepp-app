@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "SyntroPrepp",
+    "slug": "syntroprepp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1d1a"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1d1a"
+      },
+      "permissions": ["android.permission.CAMERA"],
+      "package": "de.syntrosoft.prepp"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "de.syntrosoft.prepp"
+    },
+    "plugins": [
+      ["expo-camera", { "cameraPermission": "SyntroPrepp braucht Kamerazugriff fuer den EAN-Scanner." }]
+    ]
+  }
+}
