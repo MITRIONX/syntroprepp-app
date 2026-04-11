@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const SERVER_URL_KEY = 'syntroprepp_server_url'
-const DEFAULT_SERVER_URL = 'http://192.168.1.100:3200'
+const DEFAULT_SERVER_URL = 'http://46.225.218.211:3200'
 
 let serverUrl: string | null = null
 
