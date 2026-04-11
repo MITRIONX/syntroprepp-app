@@ -5,10 +5,16 @@ import { theme } from '../lib/theme'
 
 interface Props { mhd_datum: string | null; mhd_geschaetzt: string | null; mhd_typ: 'exakt' | 'geschaetzt' }
 
+function parseDate(dateStr: string): Date {
+  const parts = dateStr.split('T')[0].split('-')
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+}
+
 function getExpiryColor(dateStr: string | null): string {
   if (!dateStr) return theme.colors.textMuted
   const now = new Date()
-  const expiry = new Date(dateStr)
+  const expiry = parseDate(dateStr)
+  if (isNaN(expiry.getTime())) return theme.colors.textMuted
   const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (daysLeft <= 0) return theme.colors.danger
   if (daysLeft <= 90) return theme.colors.warning
@@ -16,8 +22,12 @@ function getExpiryColor(dateStr: string | null): string {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`
+  // Handle YYYY-MM-DD and ISO strings
+  const parts = dateStr.split('T')[0].split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}`
+  }
+  return dateStr
 }
 
 export default function MhdBadge({ mhd_datum, mhd_geschaetzt, mhd_typ }: Props) {

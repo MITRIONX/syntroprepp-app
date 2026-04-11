@@ -4,7 +4,8 @@ import { useNavigation, useRoute } from '@react-navigation/native'
 import { uuidv4 } from '../lib/uuid'
 import { theme } from '../lib/theme'
 import { api, isServerReachable } from '../lib/api'
-import { dbRun, dbGetFirst } from '../lib/db'
+import { dbRun, dbGetFirst, dbGetAll } from '../lib/db'
+import { Kiste } from '../types'
 
 interface LookupResult { name: string; bild_url: string | null; gewicht: string | null; naehrwerte: Record<string, unknown> | null; beschreibung: string | null; kategorie_vorschlag: string | null; beipackzettel_url: string | null }
 
@@ -25,8 +26,11 @@ export default function ScanResultScreen() {
   useEffect(() => { lookup() }, [ean])
 
   async function lookup() {
-    const existing = await dbGetFirst<{ id: string }>('SELECT id FROM produkte WHERE ean = ? AND deleted = 0', [ean])
-    if (existing) { Alert.alert('Produkt bekannt', 'Dieses Produkt ist bereits in der Datenbank.', [{ text: 'OK', onPress: () => navigation.navigate('WareForm', { produkt_id: existing.id }) }]); return }
+    const existing = await dbGetFirst<{ id: string; name: string }>('SELECT id, name FROM produkte WHERE ean = ? AND deleted = 0', [ean])
+    if (existing) {
+      askAddToBox(existing.id, existing.name)
+      return
+    }
     const online = await isServerReachable()
     if (!online) { setNotFound(true); setLoading(false); return }
     try {
@@ -34,6 +38,17 @@ export default function ScanResultScreen() {
       if (response.found && response.product) { setResult(response.product as LookupResult) } else { setNotFound(true) }
     } catch { setNotFound(true) }
     setLoading(false)
+  }
+
+  function askAddToBox(produktId: string, produktName: string) {
+    Alert.alert(
+      'Produkt bekannt',
+      `"${produktName}" ist bereits gespeichert.\nIn eine Kiste packen?`,
+      [
+        { text: 'Nur anzeigen', style: 'cancel', onPress: () => navigation.replace('ProduktDetail', { id: produktId }) },
+        { text: 'In Kiste packen', onPress: () => navigation.replace('WareForm', { produkt_id: produktId }) },
+      ]
+    )
   }
 
   async function saveProduct() {
@@ -46,7 +61,15 @@ export default function ScanResultScreen() {
        importNaehrwerte && result.naehrwerte ? JSON.stringify(result.naehrwerte) : null, importBeschreibung ? result.beschreibung : null,
        importBeipackzettel ? result.beipackzettel_url : null, 'gescannt', now, now]
     )
-    navigation.replace('WareForm', { produkt_id: id })
+    // Ask if user wants to add to a box
+    Alert.alert(
+      'Produkt gespeichert',
+      `"${importName ? result.name : 'Unbenannt'}" wurde angelegt.\nIn eine Kiste packen?`,
+      [
+        { text: 'Spaeter', onPress: () => navigation.navigate('Tabs') },
+        { text: 'In Kiste packen', onPress: () => navigation.replace('WareForm', { produkt_id: id }) },
+      ]
+    )
   }
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primaryLight} /><Text style={styles.loadingText}>Suche nach EAN {ean}...</Text></View>

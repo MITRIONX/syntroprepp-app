@@ -45,12 +45,12 @@ export default function DashboardScreen() {
       data={expiring} keyExtractor={item => item.id}
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.itemCard} onPress={() => navigation.navigate('ProduktDetail', { id: item.produkt_id })}>
-          <View style={styles.itemInfo}><Text style={styles.itemName}>{item.produkt_name}</Text><Text style={styles.itemKiste}>Kiste {item.kisten_nummer}</Text></View>
+          <View style={styles.itemInfo}><Text style={styles.itemName}>{item.produkt_name}</Text><Text style={styles.itemKiste}>{item.kisten_nummer ? `Kiste ${item.kisten_nummer}` : 'Keine Kiste'}</Text></View>
           <MhdBadge mhd_datum={item.mhd_datum} mhd_geschaetzt={item.mhd_geschaetzt} mhd_typ={item.mhd_typ} />
         </TouchableOpacity>
       )}
       ListFooterComponent={recent.length > 0 ? <View><Text style={styles.sectionTitle}>Zuletzt hinzugefuegt</Text>
-        {recent.map(item => <View key={item.id} style={styles.itemCard}><View style={styles.itemInfo}><Text style={styles.itemName}>{item.produkt_name}</Text><Text style={styles.itemKiste}>Kiste {item.kisten_nummer} | x{item.menge}</Text></View></View>)}
+        {recent.map(item => <View key={item.id} style={styles.itemCard}><View style={styles.itemInfo}><Text style={styles.itemName}>{item.produkt_name}</Text><Text style={styles.itemKiste}>{item.kisten_nummer ? `Kiste ${item.kisten_nummer}` : 'Keine Kiste'} | x{item.menge}</Text></View></View>)}
       </View> : null}
     />
   )
