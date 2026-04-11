@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system'
+import { Camera, ImagePlus } from 'lucide-react-native'
 import { uuidv4 } from '../lib/uuid'
 import { theme } from '../lib/theme'
 import { dbGetAll, dbRun } from '../lib/db'
@@ -17,8 +20,9 @@ export default function WareFormScreen() {
   const [mhdDatum, setMhdDatum] = useState('')
   const [mhdGeschaetzt, setMhdGeschaetzt] = useState('')
   const [notizen, setNotizen] = useState('')
-  const [manualMode, setManualMode] = useState(false)
+  const [manualMode, setManualMode] = useState(!preselectedProduktId)
   const [produktName, setProduktName] = useState('')
+  const [imageUri, setImageUri] = useState<string | null>(null)
 
   useEffect(() => { loadProdukte() }, [])
 
@@ -26,12 +30,54 @@ export default function WareFormScreen() {
     setProdukte(await dbGetAll<Produkt>('SELECT * FROM produkte WHERE deleted = 0 ORDER BY name'))
   }
 
+  async function pickImage(useCamera: boolean) {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    }
+
+    let result: ImagePicker.ImagePickerResult
+    if (useCamera) {
+      const perm = await ImagePicker.requestCameraPermissionsAsync()
+      if (!perm.granted) { Alert.alert('Kamerazugriff benoetigt'); return }
+      result = await ImagePicker.launchCameraAsync(options)
+    } else {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!perm.granted) { Alert.alert('Galerie-Zugriff benoetigt'); return }
+      result = await ImagePicker.launchImageLibraryAsync(options)
+    }
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0]
+      // Copy to app's persistent directory
+      const fileName = `product_${uuidv4()}.jpg`
+      const destDir = `${FileSystem.documentDirectory}images/`
+      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true })
+      const destPath = `${destDir}${fileName}`
+      await FileSystem.copyAsync({ from: asset.uri, to: destPath })
+      setImageUri(destPath)
+    }
+  }
+
+  function showImagePicker() {
+    Alert.alert('Foto hinzufuegen', 'Woher soll das Bild kommen?', [
+      { text: 'Kamera', onPress: () => pickImage(true) },
+      { text: 'Galerie', onPress: () => pickImage(false) },
+      { text: 'Abbrechen', style: 'cancel' },
+    ])
+  }
+
   async function save() {
     let finalProduktId = produktId
     if (manualMode && produktName.trim()) {
       finalProduktId = uuidv4()
       const now = new Date().toISOString()
-      await dbRun('INSERT INTO produkte (id, name, quelle, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [finalProduktId, produktName.trim(), 'manuell', now, now])
+      await dbRun(
+        'INSERT INTO produkte (id, name, bild_url, quelle, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [finalProduktId, produktName.trim(), imageUri, 'manuell', now, now]
+      )
     }
     if (!finalProduktId) return
     const now = new Date().toISOString()
@@ -56,19 +102,45 @@ export default function WareFormScreen() {
           <Text style={[styles.modeBtnText, manualMode && styles.modeBtnTextActive]}>Neues Produkt</Text>
         </TouchableOpacity>
       </View>
+
       {manualMode ? (
-        <><Text style={styles.label}>Produktname *</Text>
-        <TextInput style={styles.input} value={produktName} onChangeText={setProduktName} placeholder="z.B. Dosenbrot" placeholderTextColor={theme.colors.textMuted} /></>
+        <>
+          <Text style={styles.label}>Produktname *</Text>
+          <TextInput style={styles.input} value={produktName} onChangeText={setProduktName} placeholder="z.B. Dosenbrot" placeholderTextColor={theme.colors.textMuted} />
+
+          <Text style={styles.label}>Foto</Text>
+          {imageUri ? (
+            <TouchableOpacity onPress={showImagePicker}>
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="cover" />
+              <Text style={styles.imageHint}>Tippen zum Aendern</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.imageButtons}>
+              <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(true)}>
+                <Camera size={24} color={theme.colors.primaryLight} />
+                <Text style={styles.imageBtnText}>Kamera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.imageBtn} onPress={() => pickImage(false)}>
+                <ImagePlus size={24} color={theme.colors.primaryLight} />
+                <Text style={styles.imageBtnText}>Galerie</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       ) : (
-        <><Text style={styles.label}>Produkt waehlen *</Text>
-        <View style={styles.chipList}>{produkte.map(p => (
-          <TouchableOpacity key={p.id} style={[styles.chip, produktId === p.id && styles.chipActive]} onPress={() => setProduktId(p.id)}>
-            <Text style={[styles.chipText, produktId === p.id && styles.chipTextActive]}>{p.name}</Text>
-          </TouchableOpacity>
-        ))}</View></>
+        <>
+          <Text style={styles.label}>Produkt waehlen *</Text>
+          <View style={styles.chipList}>{produkte.map(p => (
+            <TouchableOpacity key={p.id} style={[styles.chip, produktId === p.id && styles.chipActive]} onPress={() => setProduktId(p.id)}>
+              <Text style={[styles.chipText, produktId === p.id && styles.chipTextActive]}>{p.name}</Text>
+            </TouchableOpacity>
+          ))}</View>
+        </>
       )}
+
       <Text style={styles.label}>Menge</Text>
       <TextInput style={styles.input} value={menge} onChangeText={setMenge} keyboardType="numeric" placeholderTextColor={theme.colors.textMuted} />
+
       <Text style={styles.label}>MHD-Typ</Text>
       <View style={styles.modeSwitch}>
         <TouchableOpacity style={[styles.modeBtn, mhdTyp === 'exakt' && styles.modeBtnActive]} onPress={() => setMhdTyp('exakt')}>
@@ -78,15 +150,22 @@ export default function WareFormScreen() {
           <Text style={[styles.modeBtnText, mhdTyp === 'geschaetzt' && styles.modeBtnTextActive]}>Geschaetzt</Text>
         </TouchableOpacity>
       </View>
+
       {mhdTyp === 'exakt' ? (
-        <><Text style={styles.label}>MHD Datum (YYYY-MM-DD)</Text>
-        <TextInput style={styles.input} value={mhdDatum} onChangeText={setMhdDatum} placeholder="2027-06-15" placeholderTextColor={theme.colors.textMuted} /></>
+        <>
+          <Text style={styles.label}>MHD Datum (YYYY-MM-DD)</Text>
+          <TextInput style={styles.input} value={mhdDatum} onChangeText={setMhdDatum} placeholder="2027-06-15" placeholderTextColor={theme.colors.textMuted} />
+        </>
       ) : (
-        <><Text style={styles.label}>Geschaetzte Haltbarkeit</Text>
-        <TextInput style={styles.input} value={mhdGeschaetzt} onChangeText={setMhdGeschaetzt} placeholder="z.B. 5 Jahre" placeholderTextColor={theme.colors.textMuted} /></>
+        <>
+          <Text style={styles.label}>Geschaetzte Haltbarkeit</Text>
+          <TextInput style={styles.input} value={mhdGeschaetzt} onChangeText={setMhdGeschaetzt} placeholder="z.B. 5 Jahre" placeholderTextColor={theme.colors.textMuted} />
+        </>
       )}
+
       <Text style={styles.label}>Notizen</Text>
       <TextInput style={[styles.input, styles.textArea]} value={notizen} onChangeText={setNotizen} placeholder="Optionale Notizen..." placeholderTextColor={theme.colors.textMuted} multiline numberOfLines={3} />
+
       <TouchableOpacity style={styles.saveBtn} onPress={save}>
         <Text style={styles.saveBtnText}>Artikel hinzufuegen</Text>
       </TouchableOpacity>
@@ -110,6 +189,11 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primaryLight },
   chipText: { color: theme.colors.textSecondary, fontSize: theme.fontSize.sm },
   chipTextActive: { color: '#fff' },
+  imageButtons: { flexDirection: 'row', gap: 12 },
+  imageBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
+  imageBtnText: { color: theme.colors.primaryLight, fontSize: theme.fontSize.md, fontWeight: '600' },
+  imagePreview: { width: '100%', height: 200, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface },
+  imageHint: { color: theme.colors.textMuted, fontSize: theme.fontSize.xs, textAlign: 'center', marginTop: 4 },
   saveBtn: { backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.xl },
   saveBtnText: { color: '#fff', fontSize: theme.fontSize.lg, fontWeight: '700' },
 })
