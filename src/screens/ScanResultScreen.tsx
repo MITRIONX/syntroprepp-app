@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Switch, ActivityIndicator, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
-import { v4 as uuidv4 } from 'uuid'
+import { uuidv4 } from '../lib/uuid'
 import { theme } from '../lib/theme'
 import { api, isServerReachable } from '../lib/api'
 import { dbRun, dbGetFirst } from '../lib/db'

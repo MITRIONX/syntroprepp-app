@@ -18,7 +18,8 @@
         "backgroundColor": "#1a1d1a"
       },
       "permissions": ["android.permission.CAMERA"],
-      "package": "de.syntrosoft.prepp"
+      "package": "de.syntrosoft.prepp",
+      "usesCleartextTraffic": true
     },
     "ios": {
       "supportsTablet": true,
