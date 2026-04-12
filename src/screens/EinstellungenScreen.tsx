@@ -21,8 +21,18 @@ export default function EinstellungenScreen() {
     return onSyncStatusChange(setSyncStatusState)
   }, [])
 
-  async function saveUrl() { await setServerUrl(url.trim()); Alert.alert('Gespeichert', 'Server-URL wurde aktualisiert.') }
-  async function triggerSync() { setSyncing(true); await syncNow(); setSyncStatusState(getSyncStatus()); setSyncing(false) }
+  async function saveUrl() { await setServerUrl(url.trim()); Alert.alert('Gespeichert', `Server-URL: ${url.trim()}`) }
+  async function triggerSync() {
+    setSyncing(true)
+    const currentUrl = await getServerUrl()
+    console.log('[SyntroPrepp] Manual sync, URL:', currentUrl)
+    await syncNow()
+    setSyncStatusState(getSyncStatus())
+    setSyncing(false)
+    if (getSyncStatus() === 'offline') {
+      Alert.alert('Sync fehlgeschlagen', `Server nicht erreichbar:\n${currentUrl}\n\nPrüfe die URL und Internetverbindung.`)
+    }
+  }
 
   return (
     <View style={styles.container}>

@@ -19,15 +19,22 @@ export async function setServerUrl(url: string) {
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const base = await getServerUrl()
-  const res = await fetch(`${base}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-  })
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`API ${res.status}: ${body}`)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+  try {
+    const res = await fetch(`${base}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...options?.headers },
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`API ${res.status}: ${body}`)
+    }
+    return res.json()
+  } finally {
+    clearTimeout(timeout)
   }
-  return res.json()
 }
 
 export const api = {
@@ -74,5 +81,14 @@ export const api = {
 }
 
 export async function isServerReachable(): Promise<boolean> {
-  try { await api.health(); return true } catch { return false }
+  try {
+    const url = await getServerUrl()
+    console.log('[SyntroPrepp] Checking server:', url)
+    await api.health()
+    console.log('[SyntroPrepp] Server reachable')
+    return true
+  } catch (err) {
+    console.log('[SyntroPrepp] Server not reachable:', err)
+    return false
+  }
 }

@@ -60,7 +60,7 @@ export async function syncNow(): Promise<void> {
     }
     await setLastSyncTime(pullResult.server_time)
     setSyncStatus('synced')
-  } catch (err) { console.error('Sync failed:', err); setSyncStatus('offline') }
+  } catch (err) { console.error('[SyntroPrepp] Sync failed:', err); setSyncStatus('offline') }
 }
 
 let syncInterval: ReturnType<typeof setInterval> | null = null
