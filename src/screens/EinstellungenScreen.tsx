@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import Constants from 'expo-constants'
-import { MapPin, Tag, RefreshCw, Download, Server } from 'lucide-react-native'
+import { MapPin, Tag, RefreshCw, Download, Server, Printer } from 'lucide-react-native'
 import { theme } from '../lib/theme'
 import { getServerUrl, setServerUrl } from '../lib/api'
 import { syncNow, getSyncStatus, onSyncStatusChange } from '../lib/sync'
 import { checkForUpdate } from '../lib/updater'
+import { selectPrinter, getPrinterUrl } from '../lib/label-printer'
 import SyncIndicator from '../components/SyncIndicator'
 import { SyncStatus } from '../types'
 
@@ -15,9 +16,11 @@ export default function EinstellungenScreen() {
   const [url, setUrl] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncStatusState, setSyncStatusState] = useState<SyncStatus>(getSyncStatus())
+  const [printerName, setPrinterName] = useState<string | null>(null)
 
   useEffect(() => {
     getServerUrl().then(setUrl)
+    getPrinterUrl().then(u => setPrinterName(u ? 'Drucker zugewiesen' : null))
     return onSyncStatusChange(setSyncStatusState)
   }, [])
 
@@ -50,6 +53,18 @@ export default function EinstellungenScreen() {
           <RefreshCw size={18} color="#fff" /><Text style={styles.syncBtnText}>{syncing ? 'Sync...' : 'Jetzt sync'}</Text>
         </TouchableOpacity>
       </View>
+      <Text style={styles.sectionTitle}>Etiketten-Drucker</Text>
+      <TouchableOpacity style={styles.menuItem} onPress={async () => {
+        const p = await selectPrinter()
+        if (p) { setPrinterName(p.name || 'Drucker zugewiesen'); Alert.alert('Drucker gespeichert', p.name || 'Drucker wurde zugewiesen') }
+      }}>
+        <Printer size={18} color={theme.colors.primaryLight} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.menuText}>Drucker waehlen</Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.xs }}>{printerName || 'Kein Drucker zugewiesen'}</Text>
+        </View>
+      </TouchableOpacity>
+
       <Text style={styles.sectionTitle}>Verwaltung</Text>
       <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Lagerorte')}>
         <MapPin size={18} color={theme.colors.primaryLight} /><Text style={styles.menuText}>Lagerorte verwalten</Text>

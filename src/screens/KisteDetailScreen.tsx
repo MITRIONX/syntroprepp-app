@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Animated, Modal } from 'react-native'
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
-import { Package, Plus, Trash2, Edit, UtensilsCrossed } from 'lucide-react-native'
+import { Package, Plus, Trash2, Edit, UtensilsCrossed, Printer } from 'lucide-react-native'
 import { Swipeable } from 'react-native-gesture-handler'
 import { theme } from '../lib/theme'
 import { dbGetAll, dbGetFirst, dbRun } from '../lib/db'
@@ -9,6 +9,7 @@ import { uuidv4 } from '../lib/uuid'
 import { Kiste, Ware } from '../types'
 import MhdBadge from '../components/MhdBadge'
 import EmptyState from '../components/EmptyState'
+import { printKistenLabel } from '../lib/label-printer'
 
 export default function KisteDetailScreen() {
   const navigation = useNavigation<any>()
@@ -42,6 +43,24 @@ export default function KisteDetailScreen() {
         navigation.goBack()
       }},
     ])
+  }
+
+  async function druckeEtikett() {
+    if (!kiste) return
+    const lagerort = await dbGetFirst<{ name: string }>('SELECT name FROM lagerorte WHERE id = ?', [kiste.lagerort_id])
+    const now = new Date()
+    const datum = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`
+    try {
+      await printKistenLabel({
+        kistenNummer: kiste.nummer,
+        kistenName: kiste.name,
+        lagerort: lagerort?.name || null,
+        artikel: waren.map(w => ({ name: w.produkt_name || 'Unbekannt', menge: w.menge })),
+        datum,
+      })
+    } catch (err) {
+      Alert.alert('Druckfehler', String(err))
+    }
   }
 
   async function deleteWare(item: Ware) {
@@ -108,6 +127,7 @@ export default function KisteDetailScreen() {
           <Text style={styles.count}>{waren.length} Artikel</Text>
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={druckeEtikett}><Printer size={22} color={theme.colors.primaryLight} /></TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('KisteForm', { id: kiste.id })}><Edit size={22} color={theme.colors.primaryLight} /></TouchableOpacity>
           <TouchableOpacity onPress={confirmDelete}><Trash2 size={22} color={theme.colors.danger} /></TouchableOpacity>
         </View>
