@@ -5,7 +5,7 @@ import Constants from 'expo-constants'
 import { MapPin, Tag, RefreshCw, Download, Server } from 'lucide-react-native'
 import { theme } from '../lib/theme'
 import { getServerUrl, setServerUrl } from '../lib/api'
-import { syncNow, getSyncStatus } from '../lib/sync'
+import { syncNow, getSyncStatus, onSyncStatusChange } from '../lib/sync'
 import { checkForUpdate } from '../lib/updater'
 import SyncIndicator from '../components/SyncIndicator'
 import { SyncStatus } from '../types'
@@ -16,7 +16,10 @@ export default function EinstellungenScreen() {
   const [syncing, setSyncing] = useState(false)
   const [syncStatusState, setSyncStatusState] = useState<SyncStatus>(getSyncStatus())
 
-  useEffect(() => { getServerUrl().then(setUrl) }, [])
+  useEffect(() => {
+    getServerUrl().then(setUrl)
+    return onSyncStatusChange(setSyncStatusState)
+  }, [])
 
   async function saveUrl() { await setServerUrl(url.trim()); Alert.alert('Gespeichert', 'Server-URL wurde aktualisiert.') }
   async function triggerSync() { setSyncing(true); await syncNow(); setSyncStatusState(getSyncStatus()); setSyncing(false) }

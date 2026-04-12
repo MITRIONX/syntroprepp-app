@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Animated } from 'react-native'
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert, Animated, Modal } from 'react-native'
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
 import { Package, Plus, Trash2, Edit, UtensilsCrossed } from 'lucide-react-native'
 import { Swipeable } from 'react-native-gesture-handler'
@@ -17,6 +17,8 @@ export default function KisteDetailScreen() {
   const [kiste, setKiste] = useState<Kiste | null>(null)
   const [waren, setWaren] = useState<Ware[]>([])
   const swipeableRefs = useRef<Map<string, Swipeable>>(new Map())
+  const [verzehrItem, setVerzehrItem] = useState<Ware | null>(null)
+  const [verzehrMenge, setVerzehrMenge] = useState('1')
 
   useFocusEffect(useCallback(() => { loadData() }, [id]))
 
@@ -53,20 +55,26 @@ export default function KisteDetailScreen() {
     ])
   }
 
-  async function verzehren(item: Ware) {
+  function verzehren(item: Ware) {
     swipeableRefs.current.get(item.id)?.close()
-    Alert.alert('Verzehrt', `"${item.produkt_name}" als verzehrt markieren?`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Verzehrt', onPress: async () => {
-        const now = new Date().toISOString()
-        await dbRun(
-          'INSERT INTO verzehr_historie (id, produkt_id, produkt_name, menge, verzehrt_am, kiste_nummer) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuidv4(), item.produkt_id, item.produkt_name || 'Unbekannt', item.menge, now, kiste?.nummer || '']
-        )
-        await dbRun('UPDATE waren SET deleted = 1, updated_at = ? WHERE id = ?', [now, item.id])
-        loadData()
-      }},
-    ])
+    setVerzehrMenge(String(item.menge))
+    setVerzehrItem(item)
+  }
+
+  async function doVerzehr(item: Ware, anzahl: number) {
+    if (anzahl <= 0 || isNaN(anzahl)) return
+    const now = new Date().toISOString()
+    const verzehrMenge = Math.min(anzahl, item.menge)
+    await dbRun(
+      'INSERT INTO verzehr_historie (id, produkt_id, produkt_name, menge, verzehrt_am, kiste_nummer) VALUES (?, ?, ?, ?, ?, ?)',
+      [uuidv4(), item.produkt_id, item.produkt_name || 'Unbekannt', verzehrMenge, now, kiste?.nummer || '']
+    )
+    if (verzehrMenge >= item.menge) {
+      await dbRun('UPDATE waren SET deleted = 1, updated_at = ? WHERE id = ?', [now, item.id])
+    } else {
+      await dbRun('UPDATE waren SET menge = ?, updated_at = ? WHERE id = ?', [item.menge - verzehrMenge, now, item.id])
+    }
+    loadData()
   }
 
   function renderLeftActions(_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) {
@@ -134,6 +142,34 @@ export default function KisteDetailScreen() {
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('WareForm', { kiste_id: id })}>
         <Plus size={28} color="#fff" />
       </TouchableOpacity>
+
+      <Modal visible={verzehrItem !== null} transparent animationType="fade" onRequestClose={() => setVerzehrItem(null)}>
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.content}>
+            <Text style={modalStyles.title}>Verzehren</Text>
+            <Text style={modalStyles.subtitle}>"{verzehrItem?.produkt_name}"</Text>
+            <Text style={modalStyles.label}>Wie viele verzehrt? (Vorhanden: {verzehrItem?.menge})</Text>
+            <View style={modalStyles.mengeRow}>
+              <TouchableOpacity style={modalStyles.mengeBtn} onPress={() => setVerzehrMenge(String(Math.max(1, parseInt(verzehrMenge || '1') - 1)))}>
+                <Text style={modalStyles.mengeBtnText}>-</Text>
+              </TouchableOpacity>
+              <TextInput style={modalStyles.mengeInput} value={verzehrMenge} onChangeText={setVerzehrMenge} keyboardType="numeric" />
+              <TouchableOpacity style={modalStyles.mengeBtn} onPress={() => setVerzehrMenge(String(Math.min(verzehrItem?.menge || 99, parseInt(verzehrMenge || '0') + 1)))}>
+                <Text style={modalStyles.mengeBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={modalStyles.actions}>
+              <TouchableOpacity style={modalStyles.cancelBtn} onPress={() => setVerzehrItem(null)}>
+                <Text style={modalStyles.cancelText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={modalStyles.confirmBtn} onPress={() => { if (verzehrItem) { doVerzehr(verzehrItem, parseInt(verzehrMenge || '0')); setVerzehrItem(null) } }}>
+                <UtensilsCrossed size={18} color="#fff" />
+                <Text style={modalStyles.confirmText}>Verzehren</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -160,6 +196,23 @@ const swipeStyles = StyleSheet.create({
     gap: 4,
   },
   actionText: { color: '#fff', fontSize: theme.fontSize.xs, fontWeight: '600' },
+})
+
+const modalStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  content: { backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.lg, padding: theme.spacing.lg, width: '100%', maxWidth: 340 },
+  title: { color: theme.colors.text, fontSize: theme.fontSize.xl, fontWeight: '700', textAlign: 'center' },
+  subtitle: { color: theme.colors.primaryLight, fontSize: theme.fontSize.md, textAlign: 'center', marginTop: 4 },
+  label: { color: theme.colors.textSecondary, fontSize: theme.fontSize.sm, textAlign: 'center', marginTop: theme.spacing.md },
+  mengeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: theme.spacing.md },
+  mengeBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primary, justifyContent: 'center', alignItems: 'center' },
+  mengeBtnText: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  mengeInput: { backgroundColor: theme.colors.background, color: theme.colors.text, fontSize: theme.fontSize.xl, fontWeight: '700', textAlign: 'center', width: 70, height: 44, borderRadius: theme.borderRadius.sm, borderWidth: 1, borderColor: theme.colors.border },
+  actions: { flexDirection: 'row', gap: 10, marginTop: theme.spacing.lg },
+  cancelBtn: { flex: 1, padding: 12, borderRadius: theme.borderRadius.sm, backgroundColor: theme.colors.background, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
+  cancelText: { color: theme.colors.textSecondary, fontSize: theme.fontSize.md },
+  confirmBtn: { flex: 1, flexDirection: 'row', gap: 6, padding: 12, borderRadius: theme.borderRadius.sm, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  confirmText: { color: '#fff', fontSize: theme.fontSize.md, fontWeight: '600' },
 })
 
 const styles = StyleSheet.create({
