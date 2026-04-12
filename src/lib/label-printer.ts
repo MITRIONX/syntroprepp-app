@@ -159,9 +159,9 @@ function generateLabelHtml(data: LabelData): string {
   <meta charset="utf-8">
   <style>
     @page { size: 102mm auto; margin: 0; }
-    body { margin: 0; padding: 6mm 8mm; font-family: Arial, Helvetica, sans-serif; width: 86mm; color: #000; }
-    .nummer { font-size: 42px; font-weight: 900; letter-spacing: 2px; line-height: 1.1; }
-    .name { font-size: 22px; font-weight: 600; color: #222; margin-top: 2mm; }
+    body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; width: 102mm; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .nummer { font-size: 80px; font-weight: 900; letter-spacing: 3px; line-height: 1.0; padding-top: 4mm; }
+    .name { font-size: 28px; font-weight: 600; color: #222; margin-top: 2mm; padding-bottom: 4mm; }
   </style>
 </head>
 <body>
@@ -177,8 +177,8 @@ export async function printKistenLabel(data: LabelData): Promise<void> {
   const printer = await getPrinterForContext('kisten-etikett')
 
   // 102mm = 289 points (1mm = 2.835pt)
-  // Height: compact - just nummer + name
-  const heightMm = data.kistenName ? 30 : 22
+  // Height: nummer gross + name
+  const heightMm = data.kistenName ? 45 : 32
   const widthPt = Math.round(102 * 2.835)  // 289pt
   const heightPt = Math.round(heightMm * 2.835)
 
