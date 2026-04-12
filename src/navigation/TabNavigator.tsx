@@ -2,7 +2,7 @@ import React from 'react'
 import { View, TouchableOpacity } from 'react-native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
-import { Box, Scan, Search, LayoutDashboard, Settings, Package } from 'lucide-react-native'
+import { Box, Scan, Search, LayoutDashboard, Settings, Package, PackagePlus } from 'lucide-react-native'
 import { theme } from '../lib/theme'
 import DashboardScreen from '../screens/DashboardScreen'
 import KistenScreen from '../screens/KistenScreen'
@@ -15,8 +15,11 @@ function HeaderRight() {
   const navigation = useNavigation<any>()
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 16 }}>
+      <TouchableOpacity onPress={() => navigation.navigate('Buchen')}>
+        <PackagePlus size={22} color={theme.colors.primaryLight} />
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Scanner')}>
-        <Scan size={22} color={theme.colors.primaryLight} />
+        <Scan size={22} color={theme.colors.textSecondary} />
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Einstellungen')}>
         <Settings size={22} color={theme.colors.textSecondary} />
