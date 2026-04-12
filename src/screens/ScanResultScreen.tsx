@@ -28,6 +28,7 @@ export default function ScanResultScreen() {
   async function lookup() {
     const existing = await dbGetFirst<{ id: string; name: string }>('SELECT id, name FROM produkte WHERE ean = ? AND deleted = 0', [ean])
     if (existing) {
+      setLoading(false)
       askAddToBox(existing.id, existing.name)
       return
     }
@@ -53,23 +54,26 @@ export default function ScanResultScreen() {
 
   async function saveProduct() {
     if (!result) return
-    const id = uuidv4()
-    const now = new Date().toISOString()
-    await dbRun(
-      `INSERT INTO produkte (id, ean, name, bild_url, gewicht, naehrwerte, beschreibung, beipackzettel_url, quelle, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, ean, importName ? result.name : 'Unbenannt', importBild ? result.bild_url : null, importGewicht ? result.gewicht : null,
-       importNaehrwerte && result.naehrwerte ? JSON.stringify(result.naehrwerte) : null, importBeschreibung ? result.beschreibung : null,
-       importBeipackzettel ? result.beipackzettel_url : null, 'gescannt', now, now]
-    )
-    // Ask if user wants to add to a box
-    Alert.alert(
-      'Produkt gespeichert',
-      `"${importName ? result.name : 'Unbenannt'}" wurde angelegt.\nIn eine Kiste packen?`,
-      [
-        { text: 'Spaeter', onPress: () => navigation.navigate('Tabs') },
-        { text: 'In Kiste packen', onPress: () => navigation.replace('WareForm', { produkt_id: id }) },
+    try {
+      const id = uuidv4()
+      const now = new Date().toISOString()
+      await dbRun(
+        `INSERT OR REPLACE INTO produkte (id, ean, name, bild_url, gewicht, naehrwerte, beschreibung, beipackzettel_url, quelle, created_at, updated_at, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        [id, ean, importName ? result.name : 'Unbenannt', importBild ? result.bild_url : null, importGewicht ? result.gewicht : null,
+         importNaehrwerte && result.naehrwerte ? JSON.stringify(result.naehrwerte) : null, importBeschreibung ? result.beschreibung : null,
+         importBeipackzettel ? result.beipackzettel_url : null, 'gescannt', now, now]
+      )
+      Alert.alert(
+        'Produkt gespeichert',
+        `"${importName ? result.name : 'Unbenannt'}" wurde angelegt.\nIn eine Kiste packen?`,
+        [
+          { text: 'Spaeter', onPress: () => navigation.navigate('Tabs') },
+          { text: 'In Kiste packen', onPress: () => navigation.replace('WareForm', { produkt_id: id }) },
       ]
     )
+    } catch (err) {
+      Alert.alert('Fehler', 'Produkt konnte nicht gespeichert werden: ' + String(err))
+    }
   }
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={theme.colors.primaryLight} /><Text style={styles.loadingText}>Suche nach EAN {ean}...</Text></View>
