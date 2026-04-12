@@ -1,15 +1,4 @@
 import * as Print from 'expo-print'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-
-const PRINTER_URL_KEY = 'syntroprepp_printer_url'
-
-export async function getPrinterUrl(): Promise<string | null> {
-  return AsyncStorage.getItem(PRINTER_URL_KEY)
-}
-
-export async function setPrinterUrl(url: string) {
-  await AsyncStorage.setItem(PRINTER_URL_KEY, url)
-}
 
 interface LabelData {
   kistenNummer: string
@@ -104,31 +93,18 @@ function generateLabelHtml(data: LabelData): string {
 
 export async function printKistenLabel(data: LabelData): Promise<void> {
   const html = generateLabelHtml(data)
-  const printerUrl = await getPrinterUrl()
-
-  if (printerUrl) {
-    await Print.printAsync({
-      html,
-      printerUrl,
-      width: 102 * 2.835, // 102mm in points (1mm = 2.835pt)
-    })
-  } else {
-    // Fallback: system print dialog (user selects printer)
-    await Print.printAsync({
-      html,
-      width: 102 * 2.835,
-    })
-  }
+  await Print.printAsync({ html })
 }
 
-export async function selectPrinter(): Promise<Print.Printer | null> {
-  try {
-    const printer = await Print.selectPrinterAsync()
-    if (printer?.url) {
-      await setPrinterUrl(printer.url)
-    }
-    return printer
-  } catch {
-    return null
-  }
+export async function printTestLabel(): Promise<void> {
+  await printKistenLabel({
+    kistenNummer: 'TEST-001',
+    kistenName: 'Testdruck',
+    lagerort: 'Keller',
+    artikel: [
+      { name: 'Testartikel 1', menge: 3 },
+      { name: 'Testartikel 2', menge: 1 },
+    ],
+    datum: new Date().toLocaleDateString('de-DE'),
+  })
 }
