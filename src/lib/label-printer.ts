@@ -150,45 +150,23 @@ interface LabelData {
   kistenNummer: string
   kistenName: string | null
   lagerort: string | null
-  artikel: { name: string; menge: number }[]
-  datum: string
 }
 
 function generateLabelHtml(data: LabelData): string {
-  const artikelRows = data.artikel.map(a =>
-    `<tr><td style="padding:2px 0;font-size:11px;">${a.name}</td><td style="padding:2px 0;font-size:11px;text-align:right;white-space:nowrap;">x${a.menge}</td></tr>`
-  ).join('')
-
-  const titleLine = data.kistenName
-    ? `${data.kistenNummer} - ${data.kistenName}`
-    : data.kistenNummer
-
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
     @page { size: 102mm auto; margin: 0; }
-    body { margin: 0; padding: 5mm 6mm; font-family: Arial, Helvetica, sans-serif; width: 90mm; color: #000; }
-    .line1 { font-size: 36px; font-weight: 900; letter-spacing: 1px; line-height: 1.1; border-bottom: 3px solid #000; padding-bottom: 3mm; }
-    .line2 { font-size: 16px; color: #333; margin-top: 2mm; font-weight: 600; }
-    .inhalt { margin-top: 3mm; padding-top: 2mm; border-top: 1px solid #ccc; }
-    .inhalt-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 1mm; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 1px 0; font-size: 10px; }
-    .footer { margin-top: 2mm; font-size: 8px; color: #bbb; text-align: right; }
+    body { margin: 0; padding: 6mm 8mm; font-family: Arial, Helvetica, sans-serif; width: 86mm; color: #000; }
+    .nummer { font-size: 42px; font-weight: 900; letter-spacing: 2px; line-height: 1.1; }
+    .name { font-size: 22px; font-weight: 600; color: #222; margin-top: 2mm; }
   </style>
 </head>
 <body>
-  <div class="line1">${titleLine}</div>
-  ${data.lagerort ? `<div class="line2">${data.lagerort}</div>` : ''}
-  ${data.artikel.length > 0 ? `
-    <div class="inhalt">
-      <div class="inhalt-title">Inhalt (${data.artikel.length})</div>
-      <table>${artikelRows}</table>
-    </div>
-  ` : ''}
-  <div class="footer">${data.datum}</div>
+  <div class="nummer">${data.kistenNummer}</div>
+  ${data.kistenName ? `<div class="name">${data.kistenName}</div>` : ''}
 </body>
 </html>`
 }
@@ -199,35 +177,21 @@ export async function printKistenLabel(data: LabelData): Promise<void> {
   const printer = await getPrinterForContext('kisten-etikett')
 
   // 102mm = 289 points (1mm = 2.835pt)
-  // Height: base 30mm + 6mm per article line
-  const heightMm = 30 + (data.lagerort ? 8 : 0) + (data.artikel.length > 0 ? 10 + data.artikel.length * 6 : 0)
+  // Height: compact - just nummer + name
+  const heightMm = data.kistenName ? 30 : 22
   const widthPt = Math.round(102 * 2.835)  // 289pt
   const heightPt = Math.round(heightMm * 2.835)
 
   const html = generateLabelHtml(data)
 
-  if (printer) {
-    // Direct IPP printing: generate sized PDF, then send via IPP
-    const { uri } = await Print.printToFileAsync({ html, width: widthPt, height: heightPt })
-    const FileSystem = require('expo-file-system')
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
-    const result = await printPdf(printer, base64)
-    if (!result.success) throw new Error(result.error)
-  } else {
-    // Fallback: system print dialog
-    await Print.printAsync({ html, width: widthPt, height: heightPt })
-  }
+  // Android system print dialog - user selects printer there, Android remembers it
+  await Print.printAsync({ html, width: widthPt, height: heightPt })
 }
 
 export async function printTestLabel(): Promise<void> {
   await printKistenLabel({
     kistenNummer: 'TEST-001',
-    kistenName: 'Testdruck',
-    lagerort: 'Keller',
-    artikel: [
-      { name: 'Testartikel 1', menge: 3 },
-      { name: 'Testartikel 2', menge: 1 },
-    ],
-    datum: new Date().toLocaleDateString('de-DE'),
+    kistenName: 'Suessigkeiten',
+    lagerort: null,
   })
 }

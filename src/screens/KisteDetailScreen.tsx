@@ -47,16 +47,11 @@ export default function KisteDetailScreen() {
 
   async function druckeEtikett() {
     if (!kiste) return
-    const lagerort = await dbGetFirst<{ name: string }>('SELECT name FROM lagerorte WHERE id = ?', [kiste.lagerort_id])
-    const now = new Date()
-    const datum = `${now.getDate().toString().padStart(2, '0')}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getFullYear()}`
     try {
       await printKistenLabel({
         kistenNummer: kiste.nummer,
         kistenName: kiste.name,
-        lagerort: lagerort?.name || null,
-        artikel: waren.map(w => ({ name: w.produkt_name || 'Unbekannt', menge: w.menge })),
-        datum,
+        lagerort: null,
       })
     } catch (err) {
       Alert.alert('Druckfehler', String(err))
