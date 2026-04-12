@@ -7,6 +7,7 @@ import { theme } from '../lib/theme'
 import DashboardScreen from '../screens/DashboardScreen'
 import KistenScreen from '../screens/KistenScreen'
 import ArtikelScreen from '../screens/ArtikelScreen'
+import BuchenScreen from '../screens/BuchenScreen'
 import SucheScreen from '../screens/SucheScreen'
 
 const Tab = createBottomTabNavigator()
@@ -15,9 +16,6 @@ function HeaderRight() {
   const navigation = useNavigation<any>()
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 16 }}>
-      <TouchableOpacity onPress={() => navigation.navigate('Buchen')}>
-        <PackagePlus size={22} color={theme.colors.primaryLight} />
-      </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Scanner')}>
         <Scan size={22} color={theme.colors.textSecondary} />
       </TouchableOpacity>
@@ -54,6 +52,11 @@ export default function TabNavigator() {
         name="Artikel"
         component={ArtikelScreen}
         options={{ tabBarIcon: ({ color, size }) => <Package color={color} size={size} /> }}
+      />
+      <Tab.Screen
+        name="Buchen"
+        component={BuchenScreen}
+        options={{ tabBarIcon: ({ color, size }) => <PackagePlus color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Suche"
