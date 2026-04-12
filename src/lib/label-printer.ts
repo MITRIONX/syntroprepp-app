@@ -91,9 +91,17 @@ function generateLabelHtml(data: LabelData): string {
 </html>`
 }
 
+let printing = false
+
 export async function printKistenLabel(data: LabelData): Promise<void> {
-  const html = generateLabelHtml(data)
-  await Print.printAsync({ html })
+  if (printing) { throw new Error('Druckvorgang laeuft bereits') }
+  printing = true
+  try {
+    const html = generateLabelHtml(data)
+    await Print.printAsync({ html })
+  } finally {
+    printing = false
+  }
 }
 
 export async function printTestLabel(): Promise<void> {
