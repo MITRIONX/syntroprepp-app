@@ -4,15 +4,18 @@ import { useNavigation, useRoute } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system'
 import { Camera, ImagePlus } from 'lucide-react-native'
+import { Box } from 'lucide-react-native'
 import { uuidv4 } from '../lib/uuid'
 import { theme } from '../lib/theme'
 import { dbGetAll, dbRun } from '../lib/db'
-import { Produkt } from '../types'
+import { Produkt, Kiste } from '../types'
 
 export default function WareFormScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { kiste_id, produkt_id: preselectedProduktId } = route.params || {}
+  const { kiste_id: initialKisteId, produkt_id: preselectedProduktId } = route.params || {}
+  const [kisteId, setKisteId] = useState<string>(initialKisteId || '')
+  const [kisten, setKisten] = useState<Kiste[]>([])
   const [produktId, setProduktId] = useState<string>(preselectedProduktId || '')
   const [produkte, setProdukte] = useState<Produkt[]>([])
   const [menge, setMenge] = useState('1')
@@ -24,10 +27,18 @@ export default function WareFormScreen() {
   const [produktName, setProduktName] = useState('')
   const [imageUri, setImageUri] = useState<string | null>(null)
 
-  useEffect(() => { loadProdukte() }, [])
+  useEffect(() => { loadProdukte(); loadKisten() }, [])
 
   async function loadProdukte() {
     setProdukte(await dbGetAll<Produkt>('SELECT * FROM produkte WHERE deleted = 0 ORDER BY name'))
+  }
+
+  async function loadKisten() {
+    setKisten(await dbGetAll<Kiste>(`
+      SELECT k.*, l.name as lagerort_name FROM kisten k
+      LEFT JOIN lagerorte l ON k.lagerort_id = l.id
+      WHERE k.deleted = 0 ORDER BY k.nummer
+    `))
   }
 
   async function pickImage(useCamera: boolean) {
@@ -79,12 +90,12 @@ export default function WareFormScreen() {
         [finalProduktId, produktName.trim(), imageUri, 'manuell', now, now]
       )
     }
-    if (!finalProduktId) return
+    if (!finalProduktId || !kisteId) { Alert.alert('Fehler', 'Bitte Kiste waehlen'); return }
     const now = new Date().toISOString()
     await dbRun(
       `INSERT INTO waren (id, produkt_id, kiste_id, menge, mhd_datum, mhd_geschaetzt, mhd_typ, einlagerungsdatum, notizen, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [uuidv4(), finalProduktId, kiste_id, parseInt(menge) || 1,
+      [uuidv4(), finalProduktId, kisteId, parseInt(menge) || 1,
        mhdTyp === 'exakt' && mhdDatum ? mhdDatum : null,
        mhdTyp === 'geschaetzt' && mhdGeschaetzt ? mhdGeschaetzt : null,
        mhdTyp, now.split('T')[0], notizen.trim() || null, now, now]
@@ -137,6 +148,17 @@ export default function WareFormScreen() {
           ))}</View>
         </>
       )}
+
+      <Text style={styles.label}>In Kiste packen *</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kistenList}>
+        {kisten.map(k => (
+          <TouchableOpacity key={k.id} style={[styles.kisteChip, kisteId === k.id && styles.chipActive]} onPress={() => setKisteId(k.id)}>
+            <Box size={14} color={kisteId === k.id ? '#fff' : theme.colors.textSecondary} />
+            <Text style={[styles.chipText, kisteId === k.id && styles.chipTextActive]}>{k.nummer}</Text>
+            {(k as any).lagerort_name && <Text style={[styles.kisteOrt, kisteId === k.id && { color: 'rgba(255,255,255,0.7)' }]}>{(k as any).lagerort_name}</Text>}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <Text style={styles.label}>Menge</Text>
       <TextInput style={styles.input} value={menge} onChangeText={setMenge} keyboardType="numeric" placeholderTextColor={theme.colors.textMuted} />
@@ -192,6 +214,9 @@ const styles = StyleSheet.create({
   imageButtons: { flexDirection: 'row', gap: 12 },
   imageBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
   imageBtnText: { color: theme.colors.primaryLight, fontSize: theme.fontSize.md, fontWeight: '600' },
+  kistenList: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  kisteChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border },
+  kisteOrt: { color: theme.colors.textMuted, fontSize: theme.fontSize.xs, marginLeft: 2 },
   imagePreview: { width: '100%', height: 200, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.surface },
   imageHint: { color: theme.colors.textMuted, fontSize: theme.fontSize.xs, textAlign: 'center', marginTop: 4 },
   saveBtn: { backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.xl },
