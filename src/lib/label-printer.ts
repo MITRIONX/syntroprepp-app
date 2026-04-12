@@ -198,17 +198,24 @@ function generateLabelHtml(data: LabelData): string {
 export async function printKistenLabel(data: LabelData): Promise<void> {
   const printer = await getPrinterForContext('kisten-etikett')
 
+  // 102mm = 289 points (1mm = 2.835pt)
+  // Height: base 30mm + 6mm per article line
+  const heightMm = 30 + (data.lagerort ? 8 : 0) + (data.artikel.length > 0 ? 10 + data.artikel.length * 6 : 0)
+  const widthPt = Math.round(102 * 2.835)  // 289pt
+  const heightPt = Math.round(heightMm * 2.835)
+
+  const html = generateLabelHtml(data)
+
   if (printer) {
-    // Direct IPP printing: generate PDF from HTML, then send via IPP
-    const { uri } = await Print.printToFileAsync({ html: generateLabelHtml(data) })
-    // Read file as base64
+    // Direct IPP printing: generate sized PDF, then send via IPP
+    const { uri } = await Print.printToFileAsync({ html, width: widthPt, height: heightPt })
     const FileSystem = require('expo-file-system')
     const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
     const result = await printPdf(printer, base64)
     if (!result.success) throw new Error(result.error)
   } else {
     // Fallback: system print dialog
-    await Print.printAsync({ html: generateLabelHtml(data) })
+    await Print.printAsync({ html, width: widthPt, height: heightPt })
   }
 }
 
