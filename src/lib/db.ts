@@ -36,6 +36,10 @@ async function initTables() {
       einlagerungsdatum TEXT, notizen TEXT,
       created_at TEXT, updated_at TEXT, device_id TEXT, deleted INTEGER DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS verzehr_historie (
+      id TEXT PRIMARY KEY, produkt_id TEXT, produkt_name TEXT,
+      menge INTEGER DEFAULT 1, verzehrt_am TEXT, kiste_nummer TEXT
+    );
     CREATE TABLE IF NOT EXISTS sync_meta (
       key TEXT PRIMARY KEY, value TEXT
     );

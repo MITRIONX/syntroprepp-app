@@ -1,9 +1,11 @@
-import React, { useCallback, useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import React, { useCallback, useRef, useState } from 'react'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Animated } from 'react-native'
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
-import { Package, Plus, Trash2, Edit } from 'lucide-react-native'
+import { Package, Plus, Trash2, Edit, UtensilsCrossed } from 'lucide-react-native'
+import { Swipeable } from 'react-native-gesture-handler'
 import { theme } from '../lib/theme'
 import { dbGetAll, dbGetFirst, dbRun } from '../lib/db'
+import { uuidv4 } from '../lib/uuid'
 import { Kiste, Ware } from '../types'
 import MhdBadge from '../components/MhdBadge'
 import EmptyState from '../components/EmptyState'
@@ -14,6 +16,7 @@ export default function KisteDetailScreen() {
   const { id } = route.params
   const [kiste, setKiste] = useState<Kiste | null>(null)
   const [waren, setWaren] = useState<Ware[]>([])
+  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map())
 
   useFocusEffect(useCallback(() => { loadData() }, [id]))
 
@@ -39,6 +42,53 @@ export default function KisteDetailScreen() {
     ])
   }
 
+  async function deleteWare(item: Ware) {
+    swipeableRefs.current.get(item.id)?.close()
+    Alert.alert('Artikel entfernen', `"${item.produkt_name}" aus Kiste entfernen?`, [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Entfernen', style: 'destructive', onPress: async () => {
+        await dbRun('UPDATE waren SET deleted = 1, updated_at = ? WHERE id = ?', [new Date().toISOString(), item.id])
+        loadData()
+      }},
+    ])
+  }
+
+  async function verzehren(item: Ware) {
+    swipeableRefs.current.get(item.id)?.close()
+    Alert.alert('Verzehrt', `"${item.produkt_name}" als verzehrt markieren?`, [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Verzehrt', onPress: async () => {
+        const now = new Date().toISOString()
+        await dbRun(
+          'INSERT INTO verzehr_historie (id, produkt_id, produkt_name, menge, verzehrt_am, kiste_nummer) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuidv4(), item.produkt_id, item.produkt_name || 'Unbekannt', item.menge, now, kiste?.nummer || '']
+        )
+        await dbRun('UPDATE waren SET deleted = 1, updated_at = ? WHERE id = ?', [now, item.id])
+        loadData()
+      }},
+    ])
+  }
+
+  function renderLeftActions(_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) {
+    const scale = dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' })
+    return (
+      <Animated.View style={[swipeStyles.leftAction, { transform: [{ scale }] }]}>
+        <UtensilsCrossed size={22} color="#fff" />
+        <Text style={swipeStyles.actionText}>Verzehrt</Text>
+      </Animated.View>
+    )
+  }
+
+  function renderRightActions(_progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) {
+    const scale = dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' })
+    return (
+      <Animated.View style={[swipeStyles.rightAction, { transform: [{ scale }] }]}>
+        <Trash2 size={22} color="#fff" />
+        <Text style={swipeStyles.actionText}>Loeschen</Text>
+      </Animated.View>
+    )
+  }
+
   if (!kiste) return null
 
   return (
@@ -58,15 +108,27 @@ export default function KisteDetailScreen() {
         contentContainerStyle={waren.length === 0 ? styles.emptyContainer : styles.list}
         ListEmptyComponent={<EmptyState icon={<Package size={48} color={theme.colors.textMuted} />} title="Kiste ist leer" subtitle="Scanne einen EAN oder lege manuell einen Artikel an" />}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProduktDetail', { id: item.produkt_id })}>
-            <View style={styles.cardRow}>
-              <View style={styles.cardInfo}>
-                <Text style={styles.produktName}>{item.produkt_name || 'Unbekannt'}</Text>
-                <Text style={styles.menge}>Menge: {item.menge}</Text>
+          <Swipeable
+            ref={ref => { if (ref) swipeableRefs.current.set(item.id, ref) }}
+            renderLeftActions={renderLeftActions}
+            renderRightActions={renderRightActions}
+            onSwipeableOpen={(direction) => {
+              if (direction === 'left') verzehren(item)
+              else if (direction === 'right') deleteWare(item)
+            }}
+            overshootLeft={false}
+            overshootRight={false}
+          >
+            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('ProduktDetail', { id: item.produkt_id })}>
+              <View style={styles.cardRow}>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.produktName}>{item.produkt_name || 'Unbekannt'}</Text>
+                  <Text style={styles.menge}>Menge: {item.menge}</Text>
+                </View>
+                <MhdBadge mhd_datum={item.mhd_datum} mhd_geschaetzt={item.mhd_geschaetzt} mhd_typ={item.mhd_typ} />
               </View>
-              <MhdBadge mhd_datum={item.mhd_datum} mhd_geschaetzt={item.mhd_geschaetzt} mhd_typ={item.mhd_typ} />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </Swipeable>
         )}
       />
       <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('WareForm', { kiste_id: id })}>
@@ -75,6 +137,30 @@ export default function KisteDetailScreen() {
     </View>
   )
 }
+
+const swipeStyles = StyleSheet.create({
+  leftAction: {
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 90,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    flexDirection: 'column',
+    gap: 4,
+  },
+  rightAction: {
+    backgroundColor: theme.colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 90,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.sm,
+    flexDirection: 'column',
+    gap: 4,
+  },
+  actionText: { color: '#fff', fontSize: theme.fontSize.xs, fontWeight: '600' },
+})
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background },

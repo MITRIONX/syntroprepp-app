@@ -11,6 +11,8 @@ import ScanResultScreen from '../screens/ScanResultScreen'
 import LagerorteScreen from '../screens/LagerorteScreen'
 import KategorienScreen from '../screens/KategorienScreen'
 import EinstellungenScreen from '../screens/EinstellungenScreen'
+import ScannerScreen from '../screens/ScannerScreen'
+import VerzehrHistorieScreen from '../screens/VerzehrHistorieScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -45,6 +47,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Lagerorte" component={LagerorteScreen} options={{ title: 'Lagerorte' }} />
         <Stack.Screen name="Kategorien" component={KategorienScreen} options={{ title: 'Kategorien' }} />
         <Stack.Screen name="Einstellungen" component={EinstellungenScreen} options={{ title: 'Einstellungen' }} />
+        <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: 'Scanner' }} />
+        <Stack.Screen name="VerzehrHistorie" component={VerzehrHistorieScreen} options={{ title: 'Verzehr-Historie' }} />
       </Stack.Navigator>
     </NavigationContainer>
   )

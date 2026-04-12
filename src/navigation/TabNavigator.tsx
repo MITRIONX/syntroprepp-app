@@ -1,22 +1,27 @@
 import React from 'react'
-import { TouchableOpacity } from 'react-native'
+import { View, TouchableOpacity } from 'react-native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { useNavigation } from '@react-navigation/native'
-import { Box, Scan, Search, LayoutDashboard, Settings } from 'lucide-react-native'
+import { Box, Scan, Search, LayoutDashboard, Settings, Package } from 'lucide-react-native'
 import { theme } from '../lib/theme'
 import DashboardScreen from '../screens/DashboardScreen'
 import KistenScreen from '../screens/KistenScreen'
-import ScannerScreen from '../screens/ScannerScreen'
+import ArtikelScreen from '../screens/ArtikelScreen'
 import SucheScreen from '../screens/SucheScreen'
 
 const Tab = createBottomTabNavigator()
 
-function SettingsButton() {
+function HeaderRight() {
   const navigation = useNavigation<any>()
   return (
-    <TouchableOpacity onPress={() => navigation.navigate('Einstellungen')} style={{ marginRight: 16 }}>
-      <Settings size={22} color={theme.colors.textSecondary} />
-    </TouchableOpacity>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 16 }}>
+      <TouchableOpacity onPress={() => navigation.navigate('Scanner')}>
+        <Scan size={22} color={theme.colors.primaryLight} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('Einstellungen')}>
+        <Settings size={22} color={theme.colors.textSecondary} />
+      </TouchableOpacity>
+    </View>
   )
 }
 
@@ -29,15 +34,13 @@ export default function TabNavigator() {
         tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border },
         tabBarActiveTintColor: theme.colors.primaryLight,
         tabBarInactiveTintColor: theme.colors.textMuted,
+        headerRight: () => <HeaderRight />,
       }}
     >
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
-          headerRight: () => <SettingsButton />,
-        }}
+        options={{ tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Kisten"
@@ -45,9 +48,9 @@ export default function TabNavigator() {
         options={{ tabBarIcon: ({ color, size }) => <Box color={color} size={size} /> }}
       />
       <Tab.Screen
-        name="Scanner"
-        component={ScannerScreen}
-        options={{ tabBarIcon: ({ color, size }) => <Scan color={color} size={size} /> }}
+        name="Artikel"
+        component={ArtikelScreen}
+        options={{ tabBarIcon: ({ color, size }) => <Package color={color} size={size} /> }}
       />
       <Tab.Screen
         name="Suche"
