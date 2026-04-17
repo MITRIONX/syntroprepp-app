@@ -19,7 +19,14 @@
       },
       "permissions": ["android.permission.CAMERA"],
       "package": "de.syntrosoft.prepp",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "intentFilters": [
+        {
+          "action": "SEND",
+          "category": ["DEFAULT"],
+          "data": [{ "mimeType": "text/plain" }]
+        }
+      ]
     },
     "ios": {
       "supportsTablet": true,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
+import { NavigationContainer, DefaultTheme, NavigationContainerRef } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { theme } from '../lib/theme'
 import TabNavigator from './TabNavigator'
@@ -30,9 +30,9 @@ const navTheme = {
   },
 }
 
-export default function AppNavigator() {
+export default function AppNavigator({ navRef }: { navRef?: React.RefObject<NavigationContainerRef<any> | null> }) {
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navRef ?? undefined} theme={navTheme}>
       <Stack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: theme.colors.surface },
