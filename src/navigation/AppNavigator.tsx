@@ -13,6 +13,7 @@ import KategorienScreen from '../screens/KategorienScreen'
 import EinstellungenScreen from '../screens/EinstellungenScreen'
 import ScannerScreen from '../screens/ScannerScreen'
 import VerzehrHistorieScreen from '../screens/VerzehrHistorieScreen'
+import LinkImportScreen from '../screens/LinkImportScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -49,6 +50,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Einstellungen" component={EinstellungenScreen} options={{ title: 'Einstellungen' }} />
         <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: 'Scanner' }} />
         <Stack.Screen name="VerzehrHistorie" component={VerzehrHistorieScreen} options={{ title: 'Verzehr-Historie' }} />
+        <Stack.Screen name="LinkImport" component={LinkImportScreen} options={{ title: 'Per Link hinzufuegen' }} />
       </Stack.Navigator>
     </NavigationContainer>
   )
