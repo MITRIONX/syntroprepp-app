@@ -74,6 +74,12 @@ export const api = {
   ean: {
     lookup: (code: string) => apiFetch<{ found: boolean; source?: string; product?: unknown }>(`/api/ean/${code}`),
   },
+  linkLookup: {
+    fetch: (url: string) => apiFetch<{ title: string; image_url: string | null; description: string | null; source_url: string }>('/api/link-lookup', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
+  },
   sync: {
     pull: (since: string) => apiFetch<{ changes: Record<string, unknown[]>; server_time: string }>(`/api/sync/pull?since=${encodeURIComponent(since)}`),
     push: (changes: Record<string, unknown[]>) => apiFetch<{ applied: Record<string, number>; server_time: string }>('/api/sync/push', { method: 'POST', body: JSON.stringify({ changes }) }),
