@@ -37,7 +37,8 @@ export interface Produkt {
   naehrwerte: Record<string, unknown> | null
   beschreibung: string | null
   beipackzettel_url: string | null
-  quelle: 'gescannt' | 'manuell'
+  kaufquelle_url: string | null
+  quelle: 'gescannt' | 'manuell' | 'link'
   created_at: string
   updated_at: string
   deleted: boolean

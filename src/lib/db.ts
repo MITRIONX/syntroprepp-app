@@ -44,6 +44,17 @@ async function initTables() {
       key TEXT PRIMARY KEY, value TEXT
     );
   `)
+
+  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version')
+  const version = row?.user_version ?? 0
+
+  if (version < 1) {
+    const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(produkte)')
+    if (!cols.some(c => c.name === 'kaufquelle_url')) {
+      await db.execAsync('ALTER TABLE produkte ADD COLUMN kaufquelle_url TEXT')
+    }
+    await db.execAsync('PRAGMA user_version = 1')
+  }
 }
 
 export async function dbGetAll<T>(sql: string, params?: unknown[]): Promise<T[]> {
