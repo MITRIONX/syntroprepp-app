@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, Alert } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import * as ImagePicker from 'expo-image-picker'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 import { Camera, ImagePlus } from 'lucide-react-native'
 import { Box } from 'lucide-react-native'
 import { uuidv4 } from '../lib/uuid'
@@ -13,7 +13,7 @@ import { Produkt, Kiste } from '../types'
 export default function WareFormScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { kiste_id: initialKisteId, produkt_id: preselectedProduktId } = route.params || {}
+  const { kiste_id: initialKisteId, produkt_id: preselectedProduktId, prefill } = route.params || {}
   const [kisteId, setKisteId] = useState<string>(initialKisteId || '')
   const [kisten, setKisten] = useState<Kiste[]>([])
   const [produktId, setProduktId] = useState<string>(preselectedProduktId || '')
@@ -23,9 +23,10 @@ export default function WareFormScreen() {
   const [mhdDatum, setMhdDatum] = useState('')
   const [mhdGeschaetzt, setMhdGeschaetzt] = useState('')
   const [notizen, setNotizen] = useState('')
-  const [manualMode, setManualMode] = useState(!preselectedProduktId)
-  const [produktName, setProduktName] = useState('')
-  const [imageUri, setImageUri] = useState<string | null>(null)
+  const [manualMode, setManualMode] = useState(!preselectedProduktId || !!prefill)
+  const [produktName, setProduktName] = useState(prefill?.name || '')
+  const [imageUri, setImageUri] = useState<string | null>(prefill?.imageUri || null)
+  const [kaufquelleUrl, setKaufquelleUrl] = useState<string>(prefill?.kaufquelleUrl || '')
 
   useEffect(() => { loadProdukte(); loadKisten() }, [])
 
@@ -85,9 +86,10 @@ export default function WareFormScreen() {
     if (manualMode && produktName.trim()) {
       finalProduktId = uuidv4()
       const now = new Date().toISOString()
+      const quelle = kaufquelleUrl ? 'link' : 'manuell'
       await dbRun(
-        'INSERT INTO produkte (id, name, bild_url, quelle, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [finalProduktId, produktName.trim(), imageUri, 'manuell', now, now]
+        'INSERT INTO produkte (id, name, bild_url, quelle, kaufquelle_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [finalProduktId, produktName.trim(), imageUri, quelle, kaufquelleUrl.trim() || null, now, now]
       )
     }
     if (!finalProduktId || !kisteId) { Alert.alert('Fehler', 'Bitte Kiste waehlen'); return }
@@ -137,6 +139,13 @@ export default function WareFormScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          {kaufquelleUrl ? (
+            <>
+              <Text style={styles.label}>Shop-Link</Text>
+              <Text style={styles.linkHint} numberOfLines={1}>{kaufquelleUrl}</Text>
+            </>
+          ) : null}
         </>
       ) : (
         <>
@@ -221,4 +230,5 @@ const styles = StyleSheet.create({
   imageHint: { color: theme.colors.textMuted, fontSize: theme.fontSize.xs, textAlign: 'center', marginTop: 4 },
   saveBtn: { backgroundColor: theme.colors.primary, borderRadius: theme.borderRadius.md, padding: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.xl },
   saveBtnText: { color: '#fff', fontSize: theme.fontSize.lg, fontWeight: '700' },
+  linkHint: { color: theme.colors.textMuted, fontSize: theme.fontSize.sm, backgroundColor: theme.colors.surface, borderRadius: theme.borderRadius.sm, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
 })
